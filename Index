@@ -1,0 +1,264 @@
+// File: src/App.jsx
+import React from "react";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import Login from "./pages/Login";
+import PartnerBoard from "./pages/PartnerBoard";
+
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/board/:partnerId" element={<PartnerBoard />} />
+        {/* 잘못된 경로 → 로그인으로 */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
+  );
+}
+
+// File: src/pages/Login.jsx
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { createOrLogin } from "../services/localAuth";
+
+export default function Login() {
+  const navigate = useNavigate();
+  const [form, setForm] = useState({ company: "", name: "", password: "" });
+  const [error, setError] = useState("");
+
+  const handleChange = (e) => {
+    setForm({ ...form, [e.target.name]: e.target.value });
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const { success, message } = await createOrLogin(form);
+    if (!success) return setError(message);
+    // 로그인 성공 → 협력사 보드로 이동
+    navigate(`/board/${form.company}`);
+  };
+
+  return (
+    <section className="min-h-screen flex items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow p-8">
+        <h1 className="text-2xl font-bold mb-6">교육 정보 입력</h1>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">협력사명:</label>
+            <input
+              name="company"
+              value={form.company}
+              onChange={handleChange}
+              type="text"
+              placeholder="협력사명 입력"
+              required
+              className="w-full rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">이름:</label>
+            <input
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              type="text"
+              placeholder="이름 입력"
+              required
+              className="w-full rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500 outline-none"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">비밀번호:</label>
+            <input
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              type="password"
+              placeholder="비밀번호 입력"
+              required
+              className="w-full rounded-md border border-gray-300 px-4 py-2 focus:border-blue-500 focus:ring-blue-500 outline-none"
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-50 border border-red-300 text-red-600 text-sm p-4 rounded-lg">
+              {error}
+            </div>
+          )}
+
+          <div className="bg-red-50 border border-red-300 text-red-600 text-sm p-4 rounded-lg">
+            작업 상황에 따른 보호구 착용 기준을 옷입히기 게임 방식으로 학습합니다.<br />
+            근로자 캐릭터 하단의 보호구를 클릭하여 올바른 보호구를 착용시켜주세요.
+          </div>
+
+          <button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg shadow">
+            다음
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+}
+
+// File: src/pages/PartnerBoard.jsx
+import React, { useState } from "react";
+import { useParams } from "react-router-dom";
+import Recorder from "../components/Recorder";
+import ImageUpload from "../components/ImageUpload";
+
+export default function PartnerBoard() {
+  const { partnerId } = useParams();
+  const [text, setText] = useState("");
+  const [images, setImages] = useState([]);
+
+  const handleSave = () => {
+    // TODO: OneDrive 업로드 & 메타데이터 저장 로직
+    alert("오늘자 TBM 기록이 저장되었습니다.");
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-100 p-4">
+      <div className="max-w-xl mx-auto space-y-4">
+        <header className="text-xl font-semibold">{partnerId} TBM 보드 (오늘)</header>
+
+        {/* 공지 리스트 예시 */}
+        <section className="space-y-2">
+          <NoticeCard level="head" title="[본사] 폭염 대비 활동" />
+          <NoticeCard level="site" title="[현장] 낙하물 주의" />
+        </section>
+
+        {/* 녹음 & 이미지 */}
+        <Recorder onText={setText} />
+        <ImageUpload onUpload={(url) => setImages((prev) => [...prev, url])} />
+
+        <textarea
+          className="w-full h-28 border border-gray-300 rounded-lg p-2"
+          placeholder="자동 변환된 텍스트 또는 메모"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+        />
+
+        <button
+          onClick={handleSave}
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg">
+          등록
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// File: src/components/NoticeCard.jsx
+import React from "react";
+import { clsx } from "classnames";
+
+const levelColor = {
+  head: "bg-yellow-100 border-yellow-300",
+  site: "bg-green-100 border-green-300",
+  partner: "bg-gray-100 border-gray-300",
+};
+
+export default function NoticeCard({ level = "partner", title }) {
+  return (
+    <div className={clsx("border-l-4 p-3 rounded-md text-sm", levelColor[level])}>{title}</div>
+  );
+}
+
+// File: src/components/Recorder.jsx
+import React, { useState, useEffect, useRef } from "react";
+
+export default function Recorder({ onText }) {
+  const [recording, setRecording] = useState(false);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    if (!("webkitSpeechRecognition" in window)) return;
+    const SpeechRecognition = window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = "ko-KR";
+    recognition.interimResults = true;
+    recognition.continuous = true;
+
+    recognition.onresult = (e) => {
+      let transcript = "";
+      for (let i = e.resultIndex; i < e.results.length; ++i) {
+        transcript += e.results[i][0].transcript;
+      }
+      onText(transcript);
+    };
+    recognitionRef.current = recognition;
+  }, [onText]);
+
+  const toggleRecord = () => {
+    if (!recognitionRef.current) return alert("브라우저가 음성 인식을 지원하지 않습니다.");
+    if (recording) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
+    }
+    setRecording(!recording);
+  };
+
+  return (
+    <div className="flex items-center space-x-2">
+      <button
+        type="button"
+        onClick={toggleRecord}
+        className={clsx(
+          "px-4 py-2 rounded-lg text-white font-semibold",
+          recording ? "bg-red-600" : "bg-blue-600 hover:bg-blue-700"
+        )}
+      >
+        {recording ? "녹음 중지" : "녹음 시작"}
+      </button>
+      <span className="text-sm text-gray-500">{recording ? "녹음 중..." : ""}</span>
+    </div>
+  );
+}
+
+// File: src/components/ImageUpload.jsx
+import React from "react";
+
+export default function ImageUpload({ onUpload }) {
+  const handleChange = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    // TODO: OneDrive 업로드 후 URL 반환
+    const fakeUrl = URL.createObjectURL(file);
+    onUpload(fakeUrl);
+  };
+
+  return (
+    <input
+      type="file"
+      accept="image/*"
+      capture="environment"
+      onChange={handleChange}
+      className="block w-full text-sm text-gray-700"
+    />
+  );
+}
+
+// File: src/services/localAuth.js
+import CryptoJS from "crypto-js";
+
+export async function createOrLogin({ company, name, password }) {
+  const key = `${company}_${name}`;
+  const stored = localStorage.getItem(key);
+  const hash = CryptoJS.SHA256(password).toString();
+
+  if (stored) {
+    // 로그인 로직
+    if (stored !== hash) return { success: false, message: "비밀번호가 틀렸습니다." };
+    return { success: true };
+  }
+  // 계정 생성
+  localStorage.setItem(key, hash);
+  return { success: true };
+}
+
+// File: src/services/oneDrive.js
+// TODO: PKCE OAuth2 플로우 & 파일 업로드 함수 자리표시자
